@@ -1,0 +1,39 @@
+{
+  "name": "2sdif-prototype",
+  "version": "2.0.0",
+  "private": true,
+  "description": "2SDIF: serverless dual channel witness for accountable fog oracles (smart healthcare prototype)",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "keys": "node scripts/gen-keys.js",
+    "chain": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "gas": "hardhat run scripts/gas-report.js",
+    "witness:local": "node witness/local-server.js",
+    "gateway": "node gateway/server.js",
+    "device": "node device/simulator.js",
+    "audit": "node auditor/audit.js",
+    "web": "node web/serve.js",
+    "test:azure": "node scripts/check-azure-witness.js",
+    "test:web": "node scripts/check-web.js",
+    "check:concurrency": "node scripts/check-concurrency.js",
+    "bench:retrieve": "node scripts/bench-retrieve.js",
+    "stats": "node scripts/stats.js",
+    "azure": "node scripts/azure.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "express": "^4.21.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.1.0",
+    "adm-zip": "^0.5.18",
+    "hardhat": "^2.22.17"
+  }
+}

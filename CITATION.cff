@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software or its data, please cite it as below."
+type: software
+title: "2SDIF: A Serverless Dual Channel Oracle for Data in Transit Integrity in Blockchain Enabled Fog IoT Systems"
+abstract: "Prototype and raw measurements of 2SDIF, an accountable fog oracle: an HMAC-authenticated digest goes to a serverless witness, and the smart contract verifies the witness attestation."
+authors:
+  - given-names: Ammar
+    family-names: Hassan
+  - given-names: Waseem
+    family-names: Iqbal
+  - given-names: Umair
+    family-names: Farooq
+repository-code: "https://github.com/ammartiger/2sdif"
+url: "https://github.com/ammartiger/2sdif"
+license: MIT
+version: 1.0.0
+date-released: "2026-10-07"
+keywords:
+  - fog computing
+  - blockchain oracle
+  - data integrity
+  - serverless
+  - Internet of Things

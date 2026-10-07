@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="viewpatients.css" />
+    <title>Add Patients Health Data (PHI)</title>
+    <script src="phicloud.js"></script>
+  </head>
+  <body>
+    <div>
+      <nav style="display: flex; flex: column; align-items: center">
+        <hr />
+        <h1>Add PHI</h1>
+        <hr />
+      </nav>
+      <div style="display: flex; flex-direction: column; align-items: center">
+        <form
+          action="http://localhost:3001/addpatientshealthdata"
+          method="POST"
+          id="phi-form"
+        >
+          <label for="ssn">SSN</label>
+          <input type="text" name="ssn" id="ssnid" />
+
+          <label for="wallet">Wallet</label>
+          <input type="text" name="wallet" id="walletid" />
+
+          <label for="name">Name</label>
+          <input type="text" name="name" id="nameid" />
+
+          <label for="Diseases">Permanent Diseases</label>
+          <input type="text" name="Diseases" id="diseaseid" />
+
+          <label for="healthPlan">Health Plan</label>
+          <input type="text" name="healthPlan" id="healthid" />
+
+          <label for="responsibleClinician">Responsible Clinician Wallet</label>
+          <input type="text" name="responsibleClinician" id="docid" />
+
+          <label for="payment">Payment method</label>
+          <input type="text" name="payment" id="paymentid" />
+
+          <!--Other fields-->
+          <input type="submit" value="Submit" />
+        </form>
+        <button style="background-color: blueviolet" onclick="sendToCloud()">
+          Send verification data to cloud
+        </button>
+      </div>
+    </div>
+  </body>
+</html>

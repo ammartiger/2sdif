@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="viewpatients.js"></script>
+    <link rel="stylesheet" href="viewpatients.css" />
+    <title>Admin Home</title>
+    <script
+      src="https://cdn.ethers.io/lib/ethers-5.6.4.umd.min.js"
+      type="application/javascript"
+    ></script>
+    <script src="index.js"></script>
+  </head>
+  <body>
+    <nav>
+      <button id="user" onclick="web3_metamask_login()">
+        Login with MetaMask
+      </button>
+      <input type="button" onclick="tableFrom()" value="View Patients" />
+      <input type="button" onclick="tableForAdmin()" value="View Admins" />
+      <button onclick="window.location='./addpatients.html'">
+        Add new Patient
+      </button>
+      <button onclick="window.location='./adddoctors.html'">
+        Add new Doctor
+      </button>
+    </nav>
+    <p id="showData"></p>
+    <button>Verify from Blockchain</button>
+  </body>
+</html>

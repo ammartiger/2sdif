@@ -1,0 +1,14 @@
+{
+  "chainId": 11155111,
+  "deployedAt": "2026-10-07T16:48:14.055Z",
+  "contract": "0x92E80194900A6A232F8f7D7eb5C8a42974DedDD9",
+  "deployBlock": 11864276,
+  "deployGas": "10154423",
+  "startHead": 11864274,
+  "endHead": 11864310,
+  "feeCapGwei": "0.001000034",
+  "rpc": "ethereum-sepolia-rpc.publicnode.com",
+  "rpcClient": "reth/v2.7.0-3d592ec/x86_64-unknown-linux-gnu",
+  "finishedAt": "2026-10-07T16:55:03.056Z",
+  "failedAttempts": 0
+}

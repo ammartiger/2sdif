@@ -1,0 +1,16 @@
+{
+  "name": "2sdif-witness-azure",
+  "version": "2.0.0",
+  "private": true,
+  "description": "2SDIF serverless witness (Azure Functions, Node.js v4 programming model)",
+  "main": "src/functions/*.js",
+  "scripts": {
+    "prepare-shared": "node ../../scripts/prepare-azure.js",
+    "start": "npm run prepare-shared && func start"
+  },
+  "dependencies": {
+    "@azure/data-tables": "^13.3.0",
+    "@azure/functions": "^4.6.0",
+    "ethers": "^6.13.4"
+  }
+}

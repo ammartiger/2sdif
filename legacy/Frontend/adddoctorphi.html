@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="viewpatients.css" />
+    <title>Add a doctor to PHI ACL</title>
+  </head>
+  <body>
+    <nav style="display: flex; flex: column; align-items: center">
+      <hr />
+      <h1>Add a doctor to view PHI of a Patient</h1>
+      <hr />
+    </nav>
+    <div style="display: flex; flex-direction: column; align-items: center">
+      <form action="http://localhost:3001/addphiacl" method="POST">
+        <label for="patient">Patient Wallet</label>
+        <input type="text" name="patient" />
+
+        <label for="doc">Doctor Wallet</label>
+        <input type="text" name="doc" />
+
+        <!--Other fields-->
+        <input type="submit" value="Submit" />
+      </form>
+    </div>
+  </body>
+</html>

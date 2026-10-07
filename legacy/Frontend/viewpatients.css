@@ -1,0 +1,61 @@
+* {
+  font-family: Calibri;
+  font-size: 20px;
+  box-sizing: border-box;
+}
+table,
+th,
+td {
+  border: solid 1px #ddd;
+  border-collapse: collapse;
+  padding: 2px 3px;
+  text-align: center;
+}
+th {
+  font-weight: bold;
+  background-color: chocolate;
+}
+body {
+  background-color: #b8c6db;
+  background-image: linear-gradient(315deg, #b8c6db 0%, #f5f7fa 100%);
+
+  font-family: "Poppins", sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+nav {
+  border: 15px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  background-color: skyblue;
+}
+
+h1 {
+  font-weight: bold;
+  font-size: larger;
+}
+
+form {
+  margin: 15px;
+  display: block;
+  align-items: center;
+  justify-content: space-evenly;
+}
+
+input {
+  display: block;
+  /* margin-top: 10px; */
+}
+
+#phibutton {
+  background-color: red;
+}
+#prescriptionbutton {
+  background-color: red;
+}
+
+.add {
+  background-color: green;
+}

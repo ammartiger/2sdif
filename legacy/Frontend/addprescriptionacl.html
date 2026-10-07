@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="viewpatients.css" />
+    <title>Add Doctors to Prescriptions ACL</title>
+  </head>
+  <body>
+    <nav style="display: flex; flex: column; align-items: center">
+      <hr />
+      <h1>Add Doctors to Prescriptions ACL</h1>
+      <hr />
+    </nav>
+    <div style="display: flex; flex-direction: column; align-items: center">
+      <form action="http://localhost:3001/addpresacl" method="POST">
+        <label for="id">Prescription ID</label>
+        <input type="text" name="id" />
+
+        <label for="Clinician">Clinician Wallet</label>
+        <input type="text" name="Clinician" />
+
+        <!--Other fields-->
+        <input type="submit" value="Submit" />
+      </form>
+    </div>
+  </body>
+</html>

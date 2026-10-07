@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="viewpatients.css" />
+    <title>Add Doctors</title>
+    <script
+      src="https://cdn.ethers.io/lib/ethers-5.6.4.umd.min.js"
+      type="application/javascript"
+    ></script>
+    <script src="doctorslogin.js"></script>
+  </head>
+  <body>
+    <div>
+      <nav style="display: flex; flex: column; align-items: center">
+        <hr />
+        <button
+          style="margin-right: 15px"
+          ;id="user"
+          onclick="web3_metamask_login()"
+        >
+          Login with MetaMask
+        </button>
+        <h1>Add a new Doctor</h1>
+        <hr />
+      </nav>
+      <div style="display: flex; flex-direction: column; align-items: center">
+        <form action="http://localhost:3001/adddoctors" method="POST">
+          <label for="ssn">SSN</label>
+          <input type="text" name="ssn" />
+
+          <label for="name">Name</label>
+          <input type="text" name="name" />
+
+          <label for="address">Address</label>
+          <input type="text" name="address" />
+
+          <label for="phone">Phone Number</label>
+          <input type="text" name="phone" />
+
+          <label for="wallet">Wallet</label>
+          <input type="text" name="wallet" />
+          <!--Other fields-->
+          <input type="submit" value="Submit" />
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+operation,gasUsed,signedBy
+"Contract deployment",1462233,Administrator
+"Register clinician",70310,Administrator
+"Register patient",118438,Administrator
+"commitProof (attested device record)",100819,Gateway
+"Add health information record",96137,Responsible clinician
+"Grant health information access",51095,Responsible clinician
+"Revoke health information access",29138,Responsible clinician
+"Add prescription",96196,Clinician
+"Grant prescription access",51131,Prescriber
+"Revoke prescription access",29164,Prescriber

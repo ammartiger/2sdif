@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="viewpatients.css" />
+    <script src="preccloud.js"></script>
+    <title>Add Prescriptions</title>
+  </head>
+  <body>
+    <nav style="display: flex; flex: column; align-items: center">
+      <hr />
+      <h1>Add Prescriptions</h1>
+      <hr />
+    </nav>
+    <div style="display: flex; flex-direction: column; align-items: center">
+      <form action="http://localhost:3001/addprescriptions" method="POST">
+        <label for="ssn">SSN</label>
+        <input type="text" name="ssn" id="ssnid" />
+
+        <label for="id">Prescription ID</label>
+        <input type="text" name="id" id="presid" />
+
+        <label for="name">Name</label>
+        <input type="text" name="name" id="nameid" />
+
+        <label for="Disease">Disease</label>
+        <input type="text" name="Disease" id="diseseid" />
+
+        <label for="prescription">Prescription</label>
+        <input type="text" name="prescription" id="fullid" />
+
+        <label for="Clinician">Clinician Wallet</label>
+        <input type="text" name="Clinician" id="docid" />
+
+        <!--Other fields-->
+        <input type="submit" value="Submit" />
+      </form>
+      <button style="background-color: blueviolet" onclick="sendToCloud()">
+        Send verification data to cloud
+      </button>
+    </div>
+  </body>
+</html>

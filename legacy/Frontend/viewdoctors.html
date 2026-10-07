@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="viewdoctors.js"></script>
+    <link rel="stylesheet" href="viewpatients.css" />
+    <title>View Doctors</title>
+    <script
+      src="https://cdn.ethers.io/lib/ethers-5.6.4.umd.min.js"
+      type="application/javascript"
+    ></script>
+    <script src="doctorslogin.js"></script>
+  </head>
+  <body>
+    <nav>
+      <button id="user" onclick="web3_metamask_login()">
+        Login with MetaMask
+      </button>
+      <input type="button" onclick="tableFrom()" value="View Doctors" />
+      <input type="button" onclick="tableForAdmin()" value="View Admin" />
+      <input
+        id="phibutton"
+        type="button"
+        onclick="tableForPhi()"
+        value="View PHI"
+      />
+      <input
+        id="prescriptionbutton"
+        type="button"
+        onclick="tableForPrescriptions()"
+        value="View Prescriptions"
+      />
+      <button class="add" onClick="location.href='AddPatientsHealthData.html'">
+        Add PHI
+      </button>
+      <button class="add" onClick="location.href='Addprescriptions.html'">
+        Add a Prescription
+      </button>
+    </nav>
+    <nav style="background-color: rgb(0, 102, 128)">
+      <button onClick="location.href='/adddoctorphi.html'">
+        Add a Doctor to PHI ACL
+      </button>
+      <button onClick="location.href='/addprescriptionacl.html'">
+        Add a Doctor to Prescription ACL
+      </button>
+    </nav>
+    <div style="display: flex; flex: column; justify-content: space-around">
+      <div>
+        <p>Search for Patients Medical Records (PHI)</p>
+        <input type="text" id="ssn" />
+        <input type="button" onclick="searchSsn()" value="Search" />
+      </div>
+      <div>
+        <p>Search for Prescriptions</p>
+        <input type="text" id="fprescriptions" />
+        <input type="button" onclick="searchPrescriptions()" value="Search" />
+      </div>
+    </div>
+    <p id="showData"></p>
+    <button onclick="verify()" id="Verify" style="display: none">
+      Verify from Blockchain
+    </button>
+    <button onclick="verifyP()" id="VerifyP" style="display: none">
+      Verify from Blockchain
+    </button>
+    <p id="verifyData"></p>
+  </body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2SDIF Smart Hospital</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #1d2330; }
+    header { background: #1f3a5f; color: #fff; padding: 12px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    header h1 { font-size: 18px; margin: 0; flex: 1; }
+    main { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; padding: 16px; }
+    section { background: #fff; border-radius: 8px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    h2 { font-size: 15px; margin: 0 0 8px; }
+    label { display: block; font-size: 12px; margin-top: 6px; color: #4a5160; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #cfd4dc; border-radius: 4px; font: inherit; }
+    button { margin-top: 8px; padding: 6px 10px; border: 0; border-radius: 4px; background: #2d6cdf; color: #fff; cursor: pointer; }
+    button.secondary { background: #6b7280; }
+    #log { grid-column: 1 / -1; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; max-height: 260px; overflow: auto; }
+    .ok { color: #0a7d32; } .bad { color: #b42318; }
+    #verdict code { word-break: break-all; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>2SDIF Smart Hospital (prototype)</h1>
+  <span id="who">not connected</span>
+  <button id="btnConnect">Connect &amp; sign in with MetaMask</button>
+</header>
+<main>
+  <section>
+    <h2>Administrator: register clinician</h2>
+    <label>Clinician address</label><input id="clinAddr" placeholder="0x..." />
+    <label>Name</label><input id="clinName" />
+    <label>Phone</label><input id="clinPhone" />
+    <label>National ID</label><input id="clinNid" />
+    <button data-action="registerClinician">Register clinician</button>
+  </section>
+  <section>
+    <h2>Administrator: register patient</h2>
+    <label>Patient national ID (hashed on chain)</label><input id="patNid" />
+    <label>Patient wallet address</label><input id="patAddr" placeholder="0x..." />
+    <label>Responsible clinician address</label><input id="patClin" placeholder="0x..." />
+    <label>Name</label><input id="patName" />
+    <label>Address / phone</label><input id="patContact" />
+    <button data-action="registerPatient">Register patient</button>
+  </section>
+  <section>
+    <h2>Responsible clinician: health information</h2>
+    <label>Patient national ID</label><input id="phiNid" />
+    <label>Diseases</label><input id="phiDx" />
+    <label>Health plan</label><input id="phiPlan" />
+    <label>Payment method</label><input id="phiPay" />
+    <button data-action="addPhi">Add record (MetaMask signs)</button>
+    <label>Reader address (doctor)</label><input id="phiReader" placeholder="0x..." />
+    <button data-action="grantPhi">Grant access</button>
+    <button class="secondary" data-action="revokePhi">Revoke access</button>
+  </section>
+  <section>
+    <h2>Clinician: prescriptions</h2>
+    <label>Patient national ID</label><input id="rxNid" />
+    <label>Disease</label><input id="rxDx" />
+    <label>Prescription</label><input id="rxText" />
+    <button data-action="addRx">Add prescription (MetaMask signs)</button>
+    <label>Prescription id</label><input id="rxId" placeholder="0x..." />
+    <label>Reader address (medical store / doctor)</label><input id="rxReader" placeholder="0x..." />
+    <button data-action="grantRx">Grant access</button>
+    <button class="secondary" data-action="revokeRx">Revoke access</button>
+  </section>
+  <section>
+    <h2>Read and verify</h2>
+    <label>Record id (health information, prescription or device record)</label><input id="readId" placeholder="0x..." />
+    <button data-action="readPhi">Read health information</button>
+    <button data-action="readRx">Read prescription</button>
+    <button data-action="readDevice">Read device record</button>
+    <p id="verdict"></p>
+  </section>
+  <section id="log"></section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
