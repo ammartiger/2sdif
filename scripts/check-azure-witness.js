@@ -73,34 +73,47 @@ async function main() {
     check("deposit and attestation are anonymous; log requires a function key", registered.deposit.authLevel === "anonymous" && registered.attestation.authLevel === "anonymous" && registered.log.authLevel === "function");
     check("routes match the local emulator", registered.deposit.route === "deposit" && registered.attestation.route === "attestation/{rid}" && registered.log.route === "log");
 
-    const record = { did, pid: P.toBytes32Id("p"), hr: 70, nonce: P.randomNonceHex() };
-    const rid = P.randomBytes32();
+    const dep = P.deploymentId(31337, contract);
+    const seq = 1000n;
+    const record = { did, seq: seq.toString(), pid: P.toBytes32Id("p"), hr: 70, nonce: P.randomNonceHex() };
+    const rid = P.recordId(did, seq);
     const h = P.recordDigest(record);
     const t = Math.floor(Date.now() / 1000);
-    const tag = P.deviceTag(key, { did, rid, h, t });
+    const deposit = (o = {}) => {
+      const d = { did, seq, h, t, dep, ...o };
+      return { did: d.did, seq: d.seq.toString(), h: d.h, t: d.t, dep: d.dep, tag: o.tag || P.deviceTag(key, d) };
+    };
 
-    const r1 = await registered.deposit.handler(fakeRequest({ body: { did, rid, h, t, tag } }));
+    const r0 = await registered.health.handler();
+    check("health reports the deployment binding (chain, contract, dep)", r0.jsonBody.chainId === "31337" && r0.jsonBody.contract.toLowerCase() === contract && r0.jsonBody.dep === dep);
+
+    const r1 = await registered.deposit.handler(fakeRequest({ body: deposit() }));
     check("valid deposit is accepted (201) and returns a signature", r1.status === 201 && typeof r1.jsonBody.sig === "string");
-    const signer = P.recoverAttestationSigner({ chainId: 31337, contract, rid: r1.jsonBody.rid, h: r1.jsonBody.h, did: r1.jsonBody.did, tW: r1.jsonBody.tW }, r1.jsonBody.sig);
+    check("attestation names rid = H(did, seq)", r1.jsonBody.rid === rid.toLowerCase());
+    const signer = P.recoverAttestationSigner({ chainId: 31337, contract, did: r1.jsonBody.did, seq: r1.jsonBody.seq, h: r1.jsonBody.h, tW: r1.jsonBody.tW }, r1.jsonBody.sig);
     check("attestation is signed by the witness key", signer === witnessWallet.address);
+    check("responses carry x-exec-ms and an instance id", Number.isFinite(Number(r1.headers["x-exec-ms"])) && /^[0-9a-f]{8}$/.test(r1.headers["x-instance"]));
 
-    const r2 = await registered.deposit.handler(fakeRequest({ body: { did, rid, h, t, tag } }));
-    check("duplicate record id is rejected by Table Storage (409, write once)", r2.status === 409);
+    const r2 = await registered.deposit.handler(fakeRequest({ body: deposit({ h: P.recordDigest({ other: 1 }) }) }));
+    check("second deposit for the same (did, seq) is rejected by Table Storage (409, write once)", r2.status === 409);
 
-    const r3 = await registered.deposit.handler(fakeRequest({ body: { did, rid: P.randomBytes32(), h, t, tag } }));
-    check("tag bound to a different record id is rejected (401)", r3.status === 401);
+    const r3 = await registered.deposit.handler(fakeRequest({ body: deposit({ seq: seq + 1n, tag: deposit().tag }) }));
+    check("tag bound to a different sequence number is rejected (401)", r3.status === 401);
 
-    const r4 = await registered.deposit.handler(fakeRequest({ body: { did, rid: P.randomBytes32(), h, t: t - 3600, tag: P.deviceTag(key, { did, rid: "0x" + "22".repeat(32), h, t: t - 3600 }) } }));
-    check("stale or mismatched deposit is rejected (401)", r4.status === 401);
+    const r3b = await registered.deposit.handler(fakeRequest({ body: deposit({ seq: seq + 2n, dep: P.deploymentId(1, contract) }) }));
+    check("deposit for another deployment is rejected (400)", r3b.status === 400);
+
+    const r4 = await registered.deposit.handler(fakeRequest({ body: deposit({ seq: seq + 3n, t: t - 3600 }) }));
+    check("stale deposit is rejected (401)", r4.status === 401);
 
     const r5 = await registered.attestation.handler(fakeRequest({ params: { rid } }));
-    check("attestation retrieval returns the stored entry", r5.status === 200 && r5.jsonBody.h === h.toLowerCase() && r5.jsonBody.sig === r1.jsonBody.sig);
+    check("attestation retrieval returns the stored entry", r5.status === 200 && r5.jsonBody.h === h.toLowerCase() && r5.jsonBody.sig === r1.jsonBody.sig && String(r5.jsonBody.seq) === seq.toString());
 
     const r6 = await registered.attestation.handler(fakeRequest({ params: { rid: P.randomBytes32() } }));
     check("unknown record id returns 404", r6.status === 404);
 
     const r7 = await registered.log.handler(fakeRequest({ query: { since: String(t - 10) } }));
-    check("log lists the attested entry", r7.status === 200 && r7.jsonBody.entries.some((e) => e.rid === rid.toLowerCase()));
+    check("log lists the attested entry with its sequence number", r7.status === 200 && r7.jsonBody.entries.some((e) => e.rid === rid.toLowerCase() && String(e.seq) === seq.toString()));
 
     const bad = await registered.deposit.handler({ json: async () => { throw new Error("bad json"); } });
     check("malformed JSON is rejected (400)", bad.status === 400);
@@ -132,12 +145,13 @@ async function serve(azurite) {
     await new Promise((r) => req.on("end", r));
     let out;
     const m = url.pathname.match(/^\/api\/attestation\/(0x[0-9a-fA-F]{64})$/);
-    if (req.method === "POST" && url.pathname === "/api/deposit") out = await registered.deposit.handler({ json: async () => JSON.parse(body) });
+    if (req.method === "GET" && url.pathname === "/api/health") out = await registered.health.handler();
+    else if (req.method === "POST" && url.pathname === "/api/deposit") out = await registered.deposit.handler({ json: async () => JSON.parse(body) });
     else if (req.method === "GET" && m) out = await registered.attestation.handler(fakeRequest({ params: { rid: m[1] } }));
     else if (req.method === "GET" && url.pathname === "/api/log") {
       out = fnKey && req.headers["x-functions-key"] === fnKey ? await registered.log.handler(fakeRequest({ query: Object.fromEntries(url.searchParams) })) : { status: 401, jsonBody: { error: "function key required" } };
     } else out = { status: 404, jsonBody: { error: "no route" } };
-    res.writeHead(out.status || 200, { "content-type": "application/json" });
+    res.writeHead(out.status || 200, { "content-type": "application/json", ...(out.headers || {}) });
     res.end(JSON.stringify(out.jsonBody));
   });
   const port = Number(process.env.WITNESS_PORT || 7072);

@@ -33,6 +33,7 @@ function devices() {
 
 function rpcUrl(net = network()) {
   if (net === "sepolia") return process.env.SEPOLIA_RPC_URL;
+  if (net === "slot12") return process.env.SLOT12_RPC_URL || "http://127.0.0.1:8546";
   return process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545";
 }
 

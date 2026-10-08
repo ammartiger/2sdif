@@ -1,6 +1,6 @@
 {
   "name": "2sdif-prototype",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "2SDIF: serverless dual channel witness for accountable fog oracles (smart healthcare prototype)",
   "license": "MIT",
@@ -22,13 +22,21 @@
     "check:concurrency": "node scripts/check-concurrency.js",
     "bench:retrieve": "node scripts/bench-retrieve.js",
     "stats": "node scripts/stats.js",
-    "azure": "node scripts/azure.js"
+    "azure": "node scripts/azure.js",
+    "deploy:baselines": "hardhat run scripts/deploy-baselines.js --network localhost",
+    "gateway:baselines": "node gateway/baselines.js",
+    "load": "node scripts/bench-load.js",
+    "cold": "node scripts/bench-cold.js",
+    "revision": "node scripts/azure.js revision",
+    "values": "python3 scripts/paper_values.py",
+    "figures": "python3 scripts/figures.py"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.4",
-    "express": "^4.21.1"
+    "express": "^4.21.1",
+    "undici": "^7.30.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

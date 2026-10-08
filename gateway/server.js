@@ -1,15 +1,20 @@
 "use strict";
 /**
  * Fog gateway entry point.  Env: NETWORK (localhost|sepolia), GATEWAY_PRIVATE_KEY, WITNESS_URL,
- * GATEWAY_PORT (default 3001), DATA_DIR (default ./data), POLL_MS (receipt polling interval).
+ * GATEWAY_PORT (default 3001), DATA_DIR (default ./data), POLL_MS (receipt polling interval),
+ * KEEPALIVE_MS (HTTP connection reuse, see shared/http.js).
+ * Omission experiments only: FAULT_WITHHOLD_EVERY=n (never commit every n-th record),
+ * FAULT_DELAY_EVERY=m and FAULT_DELAY_MS (commit every m-th record late).
  */
 const path = require("path");
 const { ethers } = require("ethers");
 const cfg = require("../shared/config");
 const { createGateway } = require("./app");
 const { JsonStore } = require("./store");
+const { configureHttp } = require("../shared/http");
 
 async function main() {
+  configureHttp();
   const net = cfg.network();
   const dep = cfg.deployment(net);
   const pollingInterval = Number(process.env.POLL_MS || (net === "sepolia" ? 1000 : 10));
@@ -26,6 +31,12 @@ async function main() {
     store: new JsonStore(process.env.DATA_DIR || path.join(cfg.ROOT, "data", net)),
     domain: process.env.GATEWAY_DOMAIN || "localhost",
     log: console.log,
+    receiptSigner: wallet,
+    fault: {
+      withholdEvery: Number(process.env.FAULT_WITHHOLD_EVERY || 0),
+      delayEvery: Number(process.env.FAULT_DELAY_EVERY || 0),
+      delayMs: Number(process.env.FAULT_DELAY_MS || 0),
+    },
   });
   const port = Number(process.env.GATEWAY_PORT || 3001);
   app.listen(port, () => console.log(`[gateway] ${net} on http://127.0.0.1:${port}  contract ${dep.address}  witness ${witnessAddress}`));

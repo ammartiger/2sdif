@@ -2,9 +2,10 @@
 /**
  * 2SDIF fog gateway (Express).
  *
- * Device path (POST /ingest): recompute SHA-256 over the canonical record, fetch the witness
- * attestation for the record id, reject early if the digests differ, and submit commitProof.
- * The contract, not this gateway, is the decisive check: it only accepts witness-attested digests.
+ * Device path (POST /ingest): persist the record, sign a receipt for (rid, digest), fetch the witness
+ * attestation for rid = H(did, seq), reject early if the digests differ, and submit commitProof
+ * idempotently. The contract, not this gateway, is the decisive check: it only accepts witness-attested
+ * digests.
  *
  * User path: users sign their own contract transactions (records, ACL changes) with MetaMask.
  * The gateway stores an off-chain record only after confirming its digest is committed on chain
@@ -18,11 +19,13 @@ const express = require("express");
 const cors = require("cors");
 const { ethers } = require("ethers");
 const P = require("../shared/protocol");
+const { connectionCount } = require("../shared/http");
 
 const NONCE_TTL_MS = 5 * 60 * 1000;
 const SESSION_TTL_MS = 60 * 60 * 1000;
 
-function createGateway({ contract, witnessUrl, witnessAddress, chainId, store, domain = "localhost", fetchRetries = 5, fetchBackoffMs = 40, log = () => {} }) {
+function createGateway({ contract, witnessUrl, witnessAddress, chainId, store, domain = "localhost", fetchRetries = 5, fetchBackoffMs = 40, log = () => {}, receiptSigner, fault = {} }) {
+  receiptSigner = receiptSigner || contract.runner;
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: "64kb" }));
@@ -96,74 +99,132 @@ function createGateway({ contract, witnessUrl, witnessAddress, chainId, store, d
     for (let i = 0; i <= fetchRetries; i++) {
       const r = await fetch(`${witnessUrl}/attestation/${rid}`);
       if (r.status === 200) return { att: await r.json(), execMs: Number(r.headers.get("x-exec-ms")), attempts: i + 1 };
+      await r.arrayBuffer();
       if (r.status !== 404) throw new Error(`witness returned ${r.status}`);
       await new Promise((ok) => setTimeout(ok, fetchBackoffMs * (i + 1)));
     }
     return { att: null, execMs: NaN, attempts: fetchRetries + 1 };
   }
 
+  // Commit idempotently: if the proof is already on chain with the same digest (for example because a
+  // third party front-ran our transaction with the same attestation), that is success, not failure.
+  async function commitIdempotent(att) {
+    try {
+      let sentAt = 0;
+      const tx = await serialSend(async () => {
+        const t = await contract.commitProof(att.did, att.seq, att.h, att.tW, att.sig);
+        sentAt = Date.now(); // wall-clock time at which the RPC node accepted the transaction
+        return t;
+      });
+      const rc = await tx.wait();
+      return { txHash: rc.hash, gasUsed: rc.gasUsed.toString(), blockNumber: rc.blockNumber, sentAt, doneAt: Date.now(), by: "gateway" };
+    } catch (e) {
+      const onchain = await contract.getProof(att.rid);
+      if (onchain.toLowerCase() === att.h) return { txHash: null, gasUsed: null, blockNumber: null, sentAt: null, doneAt: null, by: "other" };
+      throw e;
+    }
+  }
+
+  let ingestCount = 0;
+
   app.post("/ingest", wrap(async (req, res) => {
     const t0 = P.nowMs();
-    const { did, rid, record } = req.body || {};
-    if (!P.isBytes32(did) || !P.isBytes32(rid) || !record || typeof record !== "object") {
+    const { did, seq, record } = req.body || {};
+    let seqN;
+    try { seqN = BigInt(seq); } catch { seqN = -1n; }
+    if (!P.isBytes32(did) || seqN < 0n || !record || typeof record !== "object") {
       return res.status(400).json({ error: "malformed request" });
     }
-    if (String(record.did).toLowerCase() !== did.toLowerCase()) return res.status(400).json({ error: "record/did mismatch" });
+    if (String(record.did).toLowerCase() !== did.toLowerCase() || String(record.seq) !== seqN.toString()) {
+      return res.status(400).json({ error: "record/identifier mismatch" });
+    }
+    const rid = P.recordId(did, seqN);
     const h2 = P.recordDigest(record);
 
+    // Persist before committing, so that a proof on chain always has its record here; then sign a receipt
+    // that lets the device show later that this gateway accepted (rid, h2).
+    const tP0 = P.nowMs();
+    await store.put("device", rid, { record, digest: h2, status: "pending", receivedAt: Date.now() });
+    let persistMs = P.nowMs() - tP0;
+    const receipt = await P.signReceipt(receiptSigner, { chainId, contract: contractAddress, rid, h: h2 });
+
     const tF = P.nowMs();
+    const c0 = connectionCount();
     let att, fetchExecMs, fetchAttempts;
     try {
-      ({ att, execMs: fetchExecMs, attempts: fetchAttempts } = await fetchAttestation(rid.toLowerCase()));
+      ({ att, execMs: fetchExecMs, attempts: fetchAttempts } = await fetchAttestation(rid));
     } catch (e) {
-      return res.status(502).json({ error: "witness unavailable", detail: e.message });
+      return res.status(502).json({ error: "witness unavailable", detail: e.message, rid, receipt });
     }
     const fetchMs = P.nowMs() - tF;
-    if (!att) return res.status(409).json({ error: "NoAttestation" });
+    const fetchConns = connectionCount() - c0;
+    if (!att) return res.status(409).json({ error: "NoAttestation", rid, receipt });
 
     const tV = P.nowMs();
-    if (att.h !== h2.toLowerCase() || att.did !== did.toLowerCase()) {
+    if (att.h !== h2.toLowerCase() || att.did !== did.toLowerCase() || String(att.seq) !== seqN.toString() || att.rid !== rid) {
       log(`[gateway] IntegrityViolation rid=${rid}`);
-      return res.status(409).json({ error: "IntegrityViolation", timings: { fetchMs } });
+      // keep the received record and both digests as evidence for the audit
+      await store.put("device", rid, { record, digest: h2, attested: att.h, status: "rejected", receivedAt: Date.now() });
+      return res.status(409).json({ error: "IntegrityViolation", rid, timings: { fetchMs } });
     }
     let signer;
     try {
-      signer = P.recoverAttestationSigner({ chainId, contract: contractAddress, rid: att.rid, h: att.h, did: att.did, tW: att.tW }, att.sig);
+      signer = P.recoverAttestationSigner({ chainId, contract: contractAddress, did: att.did, seq: att.seq, h: att.h, tW: att.tW }, att.sig);
     } catch {
       signer = null;
     }
     if (!signer || signer.toLowerCase() !== witnessAddress.toLowerCase()) {
-      return res.status(409).json({ error: "InvalidAttestation" });
+      return res.status(409).json({ error: "InvalidAttestation", rid });
     }
     const verifyMs = P.nowMs() - tV;
 
+    // Faulty-gateway behaviour for the omission experiments only (never enabled in normal operation).
+    ingestCount += 1;
+    if (fault.withholdEvery && ingestCount % fault.withholdEvery === 0) {
+      log(`[gateway] FAULT withholding rid=${rid}`);
+      return res.status(202).json({ status: "Accepted", rid, digest: h2, receipt, fault: "withheld" });
+    }
+    if (fault.delayEvery && ingestCount % fault.delayEvery === 0) {
+      log(`[gateway] FAULT delaying rid=${rid} by ${fault.delayMs} ms`);
+      setTimeout(() => {
+        commitIdempotent(att)
+          .then((c) => store.put("device", rid, { record, digest: h2, status: "committed", txHash: c.txHash, receivedAt: Date.now() }))
+          .catch((e) => log(`[gateway] delayed commit failed rid=${rid}: ${e.message}`));
+      }, fault.delayMs);
+      return res.status(202).json({ status: "Accepted", rid, digest: h2, receipt, fault: "delayed" });
+    }
+
     const tC = P.nowMs();
-    let receipt;
+    let c;
     try {
-      const tx = await serialSend(() => contract.commitProof(att.rid, att.h, att.did, att.tW, att.sig));
-      receipt = await tx.wait();
+      c = await commitIdempotent(att);
     } catch (e) {
-      return res.status(409).json({ error: "CommitFailed", detail: e.shortMessage || e.message });
+      return res.status(409).json({ error: "CommitFailed", detail: e.shortMessage || e.message, rid, receipt });
     }
     const commitMs = P.nowMs() - tC;
 
     const tP = P.nowMs();
-    await store.put("device", att.rid, { record, digest: att.h, txHash: receipt.hash });
-    const persistMs = P.nowMs() - tP;
+    await store.put("device", rid, { record, digest: h2, status: "committed", txHash: c.txHash, receivedAt: Date.now() });
+    persistMs += P.nowMs() - tP;
 
     res.json({
       status: "Success",
-      rid: att.rid,
-      digest: att.h,
-      txHash: receipt.hash,
-      gasUsed: receipt.gasUsed.toString(),
-      timings: { fetchMs, verifyMs, commitMs, persistMs, totalMs: P.nowMs() - t0, fetchExecMs, fetchAttempts },
+      rid,
+      digest: h2,
+      txHash: c.txHash,
+      committedBy: c.by,
+      gasUsed: c.gasUsed,
+      blockNumber: c.blockNumber,
+      commitSentAt: c.sentAt,
+      commitDoneAt: c.doneAt,
+      receipt,
+      timings: { fetchMs, verifyMs, commitMs, persistMs, totalMs: P.nowMs() - t0, fetchExecMs, fetchAttempts, fetchConns },
     });
   }));
 
   app.get("/device/:rid", auth, wrap(async (req, res) => {
     const item = store.get("device", String(req.params.rid).toLowerCase());
-    if (!item) return res.status(404).json({ error: "not found" });
+    if (!item || item.status !== "committed") return res.status(404).json({ error: "not found" });
     const pid = P.toBytes32Id(item.record.pid);
     if (!(await contract.canReadPhi(pid, req.caller))) return res.status(403).json({ error: "AccessDenied" });
     res.json(item);

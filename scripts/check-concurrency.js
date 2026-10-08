@@ -4,10 +4,14 @@
  *   node scripts/check-concurrency.js [N=20]      (needs chain, witness and gateway running)
  */
 const cfg = require("../shared/config");
+const P = require("../shared/protocol");
 const { Device } = require("../device/device");
+const { configureHttp } = require("../shared/http");
 
 (async () => {
-  const devs = cfg.devices().map((d) => new Device(d));
+  configureHttp();
+  const dep = cfg.deployment();
+  const devs = cfg.devices().map((d) => new Device({ ...d, dep: P.deploymentId(dep.chainId, dep.address) }));
   const urls = {
     witnessUrl: (process.env.WITNESS_URL || "http://127.0.0.1:7071/api").replace(/\/$/, ""),
     gatewayUrl: (process.env.GATEWAY_URL || "http://127.0.0.1:3001").replace(/\/$/, ""),

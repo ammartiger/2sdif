@@ -2,17 +2,21 @@
 /**
  * 2SDIF protocol helpers shared by the device, witness, gateway, auditor and tests.
  *
- *  - canonicalize():      deterministic JSON (keys sorted recursively, no whitespace)
- *  - recordDigest():      SHA-256 over the canonical record, as bytes32 hex
- *  - deviceTag():         HMAC-SHA256 over (did | rid | h | t) with the device key
- *  - attestationMessage(): keccak256(abi.encode("2SDIF-v1", chainId, contract, rid, h, did, tW))
+ *  - canonicalize():       deterministic JSON (keys sorted recursively, no whitespace)
+ *  - recordDigest():       SHA-256 over the canonical record, as bytes32 hex
+ *  - recordId():           rid = keccak256(abi.encode(did, seq)) -- identical to TwoSDIFRegistry.recordId()
+ *  - deploymentId():       dep = keccak256(abi.encode(chainId, contract))
+ *  - deviceTag():          HMAC-SHA256 over (did | seq | h | t | dep) with the device key
+ *  - attestationMessage(): keccak256(abi.encode("2SDIF-v2", chainId, contract, did, seq, h, tW))
  *                          -- identical to TwoSDIFRegistry.attestationMessage()
  *  - signAttestation() / recoverAttestationSigner(): EIP-191 personal_sign over that message
+ *  - receiptMessage():     keccak256(abi.encode("2SDIF-receipt", chainId, contract, rid, h)), signed by the gateway
  */
 const crypto = require("crypto");
 const { ethers } = require("ethers");
 
-const DOMAIN_TAG = "2SDIF-v1";
+const DOMAIN_TAG = "2SDIF-v2";
+const RECEIPT_TAG = "2SDIF-receipt";
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
 function canonicalize(value) {
@@ -49,8 +53,20 @@ function randomNonceHex(bytes = 16) {
   return crypto.randomBytes(bytes).toString("hex");
 }
 
-function tagInput({ did, rid, h, t }) {
-  return `${String(did).toLowerCase()}|${String(rid).toLowerCase()}|${String(h).toLowerCase()}|${Number(t)}`;
+const abi = ethers.AbiCoder.defaultAbiCoder();
+
+/** Device-bound record identifier; must match TwoSDIFRegistry.recordId(). */
+function recordId(did, seq) {
+  return ethers.keccak256(abi.encode(["bytes32", "uint64"], [did, BigInt(seq)])).toLowerCase();
+}
+
+/** Identifier of a deployment (chain and contract) that a deposit is meant for. */
+function deploymentId(chainId, contract) {
+  return ethers.keccak256(abi.encode(["uint256", "address"], [BigInt(chainId), contract])).toLowerCase();
+}
+
+function tagInput({ did, seq, h, t, dep }) {
+  return `${String(did).toLowerCase()}|${BigInt(seq).toString()}|${String(h).toLowerCase()}|${Number(t)}|${String(dep).toLowerCase()}`;
 }
 
 /** HMAC-SHA256 tag the device attaches to its deposit (hex, no 0x). */
@@ -66,14 +82,12 @@ function verifyDeviceTag(keyHex, fields, tagHex) {
   return expected.length === got.length && crypto.timingSafeEqual(expected, got);
 }
 
-const abi = ethers.AbiCoder.defaultAbiCoder();
-
 /** Must match TwoSDIFRegistry.attestationMessage(). */
-function attestationMessage({ chainId, contract, rid, h, did, tW }) {
+function attestationMessage({ chainId, contract, did, seq, h, tW }) {
   return ethers.keccak256(
     abi.encode(
-      ["string", "uint256", "address", "bytes32", "bytes32", "bytes32", "uint64"],
-      [DOMAIN_TAG, BigInt(chainId), contract, rid, h, did, BigInt(tW)]
+      ["string", "uint256", "address", "bytes32", "uint64", "bytes32", "uint64"],
+      [DOMAIN_TAG, BigInt(chainId), contract, did, BigInt(seq), h, BigInt(tW)]
     )
   );
 }
@@ -84,6 +98,19 @@ async function signAttestation(wallet, fields) {
 
 function recoverAttestationSigner(fields, signature) {
   return ethers.verifyMessage(ethers.getBytes(attestationMessage(fields)), signature);
+}
+
+/** Gateway receipt: proves the gateway accepted record rid with digest h on channel 1. */
+function receiptMessage({ chainId, contract, rid, h }) {
+  return ethers.keccak256(abi.encode(["string", "uint256", "address", "bytes32", "bytes32"], [RECEIPT_TAG, BigInt(chainId), contract, rid, h]));
+}
+
+async function signReceipt(wallet, fields) {
+  return wallet.signMessage(ethers.getBytes(receiptMessage(fields)));
+}
+
+function recoverReceiptSigner(fields, signature) {
+  return ethers.verifyMessage(ethers.getBytes(receiptMessage(fields)), signature);
 }
 
 /** Sign-In-with-Ethereum style login message (EIP-4361 inspired). */
@@ -109,6 +136,7 @@ function nowMs() {
 
 module.exports = {
   DOMAIN_TAG,
+  RECEIPT_TAG,
   canonicalize,
   sha256Hex,
   recordDigest,
@@ -116,11 +144,16 @@ module.exports = {
   toBytes32Id,
   randomBytes32,
   randomNonceHex,
+  recordId,
+  deploymentId,
   deviceTag,
   verifyDeviceTag,
   attestationMessage,
   signAttestation,
   recoverAttestationSigner,
+  receiptMessage,
+  signReceipt,
+  recoverReceiptSigner,
   loginMessage,
   nowMs,
 };

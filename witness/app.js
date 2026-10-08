@@ -7,14 +7,18 @@ function createWitnessApp(witness, { auditorKey } = {}) {
   app.use(express.json({ limit: "16kb" }));
 
   // x-exec-ms mirrors the Azure Functions app: time spent inside the handler
+  let served = 0;
   app.use((_req, res, next) => {
     const t0 = performance.now();
+    served += 1;
+    res.set("x-instance", "local");
+    res.set("x-cold", served === 1 ? "1" : "0");
     const json = res.json.bind(res);
     res.json = (body) => { res.set("x-exec-ms", (performance.now() - t0).toFixed(3)); return json(body); };
     next();
   });
 
-  app.get("/api/health", (_req, res) => res.json({ ok: true, witness: witness.address, chainId: String(witness.chainId), contract: witness.contract }));
+  app.get("/api/health", (_req, res) => res.json({ ok: true, witness: witness.address, chainId: String(witness.chainId), contract: witness.contract, dep: witness.dep, instance: "local" }));
 
   app.post("/api/deposit", async (req, res) => {
     const r = await witness.deposit(req.body);

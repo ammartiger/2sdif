@@ -15,10 +15,18 @@ module.exports = {
   },
   networks: {
     // HARDHAT_BLOCK_INTERVAL_MS emulates a public chain's slot time (e.g. 12000 for Ethereum) on `hardhat node`.
-    hardhat: process.env.HARDHAT_BLOCK_INTERVAL_MS
-      ? { mining: { auto: false, interval: Number(process.env.HARDHAT_BLOCK_INTERVAL_MS) } }
-      : {},
+    // allowBlocksWithSameTimestamp keeps block timestamps on wall-clock time when many blocks are mined
+    // within one second (otherwise automine pushes each block one second ahead, which the auditor's
+    // lateness check would misread as late inclusion).
+    // HARDHAT_CHAIN_ID gives a second local node (the 12 s slot chain of the omission experiment) its own
+    // chain id, so that its deployment id differs from the automine chain's even at the same contract address.
+    hardhat: {
+      allowBlocksWithSameTimestamp: true,
+      ...(process.env.HARDHAT_CHAIN_ID ? { chainId: Number(process.env.HARDHAT_CHAIN_ID) } : {}),
+      ...(process.env.HARDHAT_BLOCK_INTERVAL_MS ? { mining: { auto: false, interval: Number(process.env.HARDHAT_BLOCK_INTERVAL_MS) } } : {}),
+    },
     localhost: { url: "http://127.0.0.1:8545", chainId: 31337 },
+    slot12: { url: "http://127.0.0.1:8546", chainId: 31338 },
     ...(SEPOLIA_RPC_URL
       ? { sepolia: { url: SEPOLIA_RPC_URL, chainId: 11155111, accounts: sepoliaAccounts } }
       : {}),

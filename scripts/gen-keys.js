@@ -3,7 +3,8 @@
  * Generates the keys the prototype needs, without overwriting existing ones:
  *   .env          WITNESS_PRIVATE_KEY, GATEWAY_PRIVATE_KEY, AUDITOR_KEY (+ placeholders for Sepolia)
  *   devices.json  N simulated sensors: label, did (bytes32), HMAC key (256 bit), patient id
- * Usage: node scripts/gen-keys.js [--devices 10]
+ * Usage: node scripts/gen-keys.js [--devices 10] [--extend 100]
+ *   --extend N  appends simulated sensors to an existing devices.json until it holds N (existing keys kept)
  * Keys stay on this machine. Never commit .env or devices.json.
  */
 const fs = require("fs");
@@ -43,9 +44,33 @@ if (!fs.existsSync(envFile)) {
   console.log("[keys] .env exists, left unchanged");
 }
 
-if (!fs.existsSync(devFile)) {
+const xArg = process.argv.indexOf("--extend");
+const extendTo = xArg > 0 ? Number(process.argv[xArg + 1]) : 0;
+
+function makeDevice(i) {
+  const label = `sensor-${String(i).padStart(2, "0")}`;
+  return {
+    label,
+    did: P.toBytes32Id(label),
+    key: crypto.randomBytes(32).toString("hex"),
+    nationalId: `patient-${String(i).padStart(2, "0")}`,
+    pid: ethers.keccak256(ethers.toUtf8Bytes(`${process.env.PID_SALT || "2sdif-demo-salt"}:patient-${String(i).padStart(2, "0")}`)),
+  };
+}
+
+if (fs.existsSync(devFile) && extendTo > 0) {
+  const d = JSON.parse(fs.readFileSync(devFile, "utf8"));
+  const before = d.devices.length;
+  for (let i = before + 1; i <= extendTo; i++) d.devices.push(makeDevice(i));
+  if (d.devices.length > before) {
+    fs.writeFileSync(devFile, JSON.stringify(d, null, 2));
+    console.log(`[keys] devices.json extended from ${before} to ${d.devices.length} devices`);
+  } else {
+    console.log(`[keys] devices.json already holds ${before} devices`);
+  }
+} else if (!fs.existsSync(devFile)) {
   const devices = [];
-  for (let i = 1; i <= nDevices; i++) {
+  for (let i = 1; i <= Math.max(nDevices, extendTo); i++) {
     const label = `sensor-${String(i).padStart(2, "0")}`;
     devices.push({
       label,

@@ -99,15 +99,19 @@ const actions = {
   async revokeRx() { await send(contract.revokeRxAccess($("rxId").value.trim(), $("rxReader").value.trim()), "revokeRxAccess"); },
   async readPhi() { await readAndVerify("/phi/", async (id) => (await contract.phiRecords(id)).digest); },
   async readRx() { await readAndVerify("/rx/", async (id) => (await contract.prescriptions(id)).digest); },
-  async readDevice() { await readAndVerify("/device/", async (id) => (await contract.getProof(id)).digest); },
+  // device records: the digest must match AND the record must carry the (did, seq) its id is derived from
+  async readDevice() {
+    await readAndVerify("/device/", async (id) => contract.getProof(id), (id, rec) =>
+      ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(["bytes32", "uint64"], [rec.did, BigInt(rec.seq)])).toLowerCase() === id.toLowerCase());
+  },
 };
 
-async function readAndVerify(path, onchainDigest) {
+async function readAndVerify(path, onchainDigest, idCheck = () => true) {
   const id = $("readId").value.trim();
   const item = await api("GET", path + id);
   const local = await recordDigest(item.record);
   const chain = await onchainDigest(id);
-  const ok = local.toLowerCase() === chain.toLowerCase();
+  const ok = local.toLowerCase() === chain.toLowerCase() && idCheck(id, item.record);
   $("verdict").innerHTML = `<b class="${ok ? "ok" : "bad"}">${ok ? "Verified against the chain" : "NOT verified: digest mismatch"}</b><br><code>${canonicalize(item.record)}</code>`;
   log(`read ${id}: ${ok ? "verified" : "digest mismatch"}`, ok ? "ok" : "bad");
 }

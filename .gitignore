@@ -22,3 +22,6 @@ azure_run.log
 .vscode/
 Thumbs.db
 desktop.ini
+__pycache__/
+results_prev_*/
+results_revision/

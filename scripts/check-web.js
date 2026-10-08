@@ -117,7 +117,8 @@ async function main() {
   check("medical store reads the prescription and it verifies", await waitLog(/read 0x[0-9a-f]{64}: verified/i));
 
   // 6. device record through the dual channel, read by the patient in the browser
-  const dev = new Device(device);
+  const d0 = cfg.deployment();
+  const dev = new Device({ ...device, dep: P.deploymentId(d0.chainId, d0.address) });
   const r = await dev.submit(dev.makeReading(), { witnessUrl: (process.env.WITNESS_URL || "http://127.0.0.1:7071/api"), gatewayUrl: "http://127.0.0.1:3001" });
   check("sensor-01 stores a reading through the dual channel", r.ok);
   check("patient signs in", await signInAs(patient));
